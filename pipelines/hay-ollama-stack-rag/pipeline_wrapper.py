@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generator, Union
+from typing import Any, Dict, Generator, Union, cast
 from datasets import load_dataset
 from hayhooks import BasePipelineWrapper, streaming_generator
 from haystack import Document, Pipeline
@@ -16,7 +16,8 @@ class PipelineWrapper(BasePipelineWrapper):
 
         docs = []
 
-        for doc in dataset:
+        for raw_doc in dataset:
+            doc = cast(Dict[str, Any], raw_doc)
             titles = doc["context"]["title"]
             sentences_list = doc["context"]["sentences"]
 
