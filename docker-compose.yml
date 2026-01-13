@@ -1,0 +1,49 @@
+services:
+  hayhooks:
+    build: . 
+    container_name: hayhooks
+    ports:
+      - "1416:1416"
+    volumes:
+      - ./pipelines:/pipelines
+    environment:
+      - HAYHOOKS_PIPELINES_DIR=/pipelines
+    restart: unless-stopped
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG-main}
+    container_name: open-webui
+    volumes:
+      - open-webui:/app/backend/data
+    ports:
+      - ${OPEN_WEBUI_PORT-3000}:8080
+    environment:
+      - WEBUI_AUTH=false
+      - OPENAI_API_BASE_URL=http://hayhooks:1416
+      - OPENAI_API_KEY="dummy"
+      - ENABLE_TAGS_GENERATION=false
+      - ENABLE_EVALUATION_ARENA_MODELS=false
+      - OFFLINE_MODE=true
+    depends_on:
+      - hayhooks
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    command: serve
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  open-webui:
+  ollama_data:
