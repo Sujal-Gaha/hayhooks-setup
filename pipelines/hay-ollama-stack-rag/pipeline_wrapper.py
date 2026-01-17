@@ -9,6 +9,8 @@ from haystack.components.builders import PromptBuilder
 from haystack_integrations.components.generators.ollama import OllamaGenerator
 from hayhooks.server.logger import log
 
+TOP_K = 4
+
 
 class PipelineWrapper(BasePipelineWrapper):
     def setup(self):
@@ -38,14 +40,14 @@ class PipelineWrapper(BasePipelineWrapper):
         document_store = InMemoryDocumentStore()
         document_store.write_documents(docs, policy=DuplicatePolicy.SKIP)
 
-        retriever = InMemoryBM25Retriever(document_store, top_k=10)
+        retriever = InMemoryBM25Retriever(document_store, top_k=TOP_K)
 
         template = """
         Given the following information, answer the question.
 
         Context:
         {% for document in documents %}
-            {{ document.content }}
+          {{ document.content }}
         {% endfor %}
         Question: {{question}}
         Answer:
@@ -56,16 +58,15 @@ class PipelineWrapper(BasePipelineWrapper):
         )
 
         ollama_generator = OllamaGenerator(
-            model="llama3.1:8b",
-            # model="gpt-oss:latest",
-            url="http://ollama:11434",
+            model="gpt-oss:20b",
+            url="http://100.105.219.66:11434",
             timeout=120,
             generation_kwargs={
-                "num_predict": 1024,
-                "temperature": 0.7,
-                "num_ctx": 8192,
+                "num_predict": 256,
+                "temperature": 0.2,
+                "num_ctx": 1024,
+                "top_p": 0.9,
             },
-            # streaming_callback=print_streaming_chunk,
         )
 
         self.pipeline = Pipeline()
@@ -85,7 +86,7 @@ class PipelineWrapper(BasePipelineWrapper):
         if not question:
             raise ValueError("The 'question' field is required.")
 
-        top_k: int = int(kwargs.get("top_k", 10))
+        top_k: int = int(kwargs.get("top_k", TOP_K))
 
         result = self.pipeline.run(
             {
@@ -113,7 +114,7 @@ class PipelineWrapper(BasePipelineWrapper):
         if not question:
             return "No question provided."
 
-        top_k = int(body.get("top_k", 10))
+        top_k = int(body.get("top_k", TOP_K))
 
         log.trace(f"Running RAG pipeline for question: {question}")
 
