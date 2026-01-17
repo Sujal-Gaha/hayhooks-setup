@@ -5,6 +5,7 @@ RUN pip install --no-cache-dir \
     datasets \
     haystack-ai \
     ollama_haystack \
+    python-dotenv \
     trafilatura
 
 # Default command (you can override in compose if needed)

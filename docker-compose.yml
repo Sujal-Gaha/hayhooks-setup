@@ -8,6 +8,8 @@ services:
       - ./pipelines:/pipelines
     environment:
       - HAYHOOKS_PIPELINES_DIR=/pipelines
+    env_file:
+      - .env
     restart: unless-stopped
 
   open-webui:
