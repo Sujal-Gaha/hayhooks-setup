@@ -1,29 +1,41 @@
-from typing import Any, Dict, Generator, Union, cast
+import os
+import time
+
+from typing import Any, Generator, Union, cast
+
 from datasets import load_dataset
-from hayhooks import BasePipelineWrapper, streaming_generator
+
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.builders import PromptBuilder
+
 from haystack_integrations.components.generators.ollama import OllamaGenerator
+
 from hayhooks.server.logger import log
+from hayhooks import BasePipelineWrapper, streaming_generator
 
 from dotenv import load_dotenv
-import os
-import time
+
 
 load_dotenv()
 
-SERVER_URL = os.getenv("SERVER_URL") or ""
+OLLAMA_SERVER_URL = os.getenv("OLLAMA_SERVER_URL") or ""
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL") or ""
+
 TOP_K = 4
 
 log.info("Pipeline module loaded")
-log.info(f"SERVER_URL resolved to: '{SERVER_URL}'")
+log.info(f"OLLAMA_SERVER_URL resolved to: '{OLLAMA_SERVER_URL}'")
+log.info(f"OLLAMA_MODEL resolved to: '{OLLAMA_MODEL}'")
 log.info(f"Default TOP_K set to: {TOP_K}")
 
-if not SERVER_URL:
-    log.warning("SERVER_URL is empty – OllamaGenerator will likely fail")
+if not OLLAMA_SERVER_URL:
+    log.warning("OLLAMA_SERVER_URL is empty – OllamaGenerator will likely fail")
+
+if not OLLAMA_MODEL:
+    log.warning("OLLAMA_MODEL is empty - Ollama Generator will likely fail")
 
 
 class PipelineWrapper(BasePipelineWrapper):
@@ -40,7 +52,7 @@ class PipelineWrapper(BasePipelineWrapper):
         log.info("Building Haystack documents")
 
         for idx, raw_doc in enumerate(dataset):
-            doc = cast(Dict[str, Any], raw_doc)
+            doc = cast(dict[str, Any], raw_doc)
             titles = doc["context"]["title"]
             sentences_list = doc["context"]["sentences"]
 
@@ -90,8 +102,8 @@ class PipelineWrapper(BasePipelineWrapper):
         log.info("PromptBuilder initialized")
 
         ollama_generator = OllamaGenerator(
-            model="gpt-oss:20b",
-            url=SERVER_URL,
+            model=OLLAMA_MODEL,
+            url=OLLAMA_SERVER_URL,
             timeout=120,
             generation_kwargs={
                 "num_predict": 256,
@@ -101,7 +113,7 @@ class PipelineWrapper(BasePipelineWrapper):
             },
         )
 
-        log.info("OllamaGenerator initialized " "(model=gpt-oss:20b, timeout=120s)")
+        log.info(f"OllamaGenerator initialized | (model={OLLAMA_MODEL} | timeout=120s)")
 
         self.pipeline = Pipeline()
 
@@ -115,7 +127,7 @@ class PipelineWrapper(BasePipelineWrapper):
         elapsed = time.time() - start_time
         log.info(f"Pipeline setup completed in {elapsed:.2f}s")
 
-    def run_api(self, **kwargs: Any) -> Dict[str, Any]:
+    def run_api(self, **kwargs: Any) -> dict[str, Any]:
         question: str = kwargs.get("question", "").strip()
 
         log.trace(f"run_api called with kwargs={kwargs}")
@@ -138,9 +150,7 @@ class PipelineWrapper(BasePipelineWrapper):
         reply = result["llm"]["replies"][0]
         elapsed = time.time() - start
 
-        log.info(
-            f"run_api completed in {elapsed:.2f}s | " f"question='{question[:80]}'"
-        )
+        log.info(f"run_api completed in {elapsed:.2f}s | question='{question[:80]}'")
 
         return {"reply": reply}
 
@@ -164,7 +174,7 @@ class PipelineWrapper(BasePipelineWrapper):
 
         top_k = int(body.get("top_k", TOP_K))
 
-        log.info(f"Streaming RAG run | " f"question='{question[:80]}' | top_k={top_k}")
+        log.info(f"Streaming RAG run | question='{question[:80]}' | top_k={top_k}")
 
         return streaming_generator(
             pipeline=self.pipeline,
