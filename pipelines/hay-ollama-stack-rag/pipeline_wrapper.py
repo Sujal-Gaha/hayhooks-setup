@@ -1,7 +1,7 @@
 import os
 import time
 
-from typing import Any, Generator, Union, cast
+from typing import Any, Generator, Optional, Union, cast
 
 from datasets import load_dataset
 
@@ -15,6 +15,8 @@ from haystack_integrations.components.generators.ollama import OllamaGenerator
 
 from hayhooks.server.logger import log
 from hayhooks import BasePipelineWrapper, streaming_generator
+
+from fastapi import UploadFile
 
 from dotenv import load_dotenv
 
@@ -127,22 +129,19 @@ class PipelineWrapper(BasePipelineWrapper):
         elapsed = time.time() - start_time
         log.info(f"Pipeline setup completed in {elapsed:.2f}s")
 
-    def run_api(self, **kwargs: Any) -> dict[str, Any]:
-        question: str = kwargs.get("question", "").strip()
-
-        log.trace(f"run_api called with kwargs={kwargs}")
+    def run_api(
+        self, files: Optional[list[UploadFile]] = None, question: str = ""
+    ) -> dict[str, Any]:
+        log.trace(f"run_api called with question={question}")
 
         if not question:
             log.error("run_api called without a question")
             raise ValueError("The 'question' field is required.")
 
-        top_k: int = int(kwargs.get("top_k", TOP_K))
-        log.debug(f"run_api using top_k={top_k}")
-
         start = time.time()
         result = self.pipeline.run(
             {
-                "retriever": {"query": question, "top_k": top_k},
+                "retriever": {"query": question, "top_k": TOP_K},
                 "prompt_builder": {"question": question},
             }
         )
@@ -151,6 +150,12 @@ class PipelineWrapper(BasePipelineWrapper):
         elapsed = time.time() - start
 
         log.info(f"run_api completed in {elapsed:.2f}s | question='{question[:80]}'")
+
+        if files and len(files) > 0:
+            filenames = [f.filename for f in files if f.filename is not None]
+            file_contents = [f.file.read() for f in files]
+
+            log.info(f"File names: {filenames}")
 
         return {"reply": reply}
 
