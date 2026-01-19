@@ -8,6 +8,8 @@ services:
       - ./pipelines:/pipelines
     environment:
       - HAYHOOKS_PIPELINES_DIR=/pipelines
+    env_file:
+      - .env
     restart: unless-stopped
 
   open-webui:
@@ -28,23 +30,5 @@ services:
       - hayhooks
     restart: unless-stopped
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    command: serve
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    restart: unless-stopped
-
 volumes:
   open-webui:
-  ollama_data:
