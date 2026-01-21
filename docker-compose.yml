@@ -6,6 +6,9 @@ services:
       - "1416:1416"
     volumes:
       - ./pipelines:/pipelines
+      - ./files:/files
+      - chroma_data:/data/chroma_db  # Persist ChromaDB data
+      - uploads:/uploads  # Optional: store uploaded files
     environment:
       - HAYHOOKS_PIPELINES_DIR=/pipelines
     env_file:
@@ -32,3 +35,5 @@ services:
 
 volumes:
   open-webui:
+  chroma_data:  # Persistent ChromaDB storage
+  uploads:  # Persistent upload storage
