@@ -1,14 +1,22 @@
 FROM deepset/hayhooks:main
 
-# Install required dependencies for your custom pipeline + extras
+# Install required dependencies pipeline
 RUN pip install --no-cache-dir \
     datasets \
     haystack-ai \
-    ollama_haystack \
+    ollama-haystack \
     python-dotenv \
-    trafilatura
+    trafilatura \
+    chromadb \
+    chroma-haystack \
+    sentence-transformers \
+    pypdf \
+    pypdf2 \
+    nltk \
+    torch
 
-COPY ./files .
+# Create directories for ChromaDB persistence
+RUN mkdir -p /data/chroma_db
 
-# Default command (you can override in compose if needed)
 CMD ["hayhooks", "run", "--host", "0.0.0.0"]
+
