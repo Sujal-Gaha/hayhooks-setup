@@ -6,7 +6,7 @@ services:
       - "1416:1416"
     volumes:
       - ./pipelines:/pipelines
-      - ./files:/files
+      # - ./files:/files
       - chroma_data:/data/chroma_db  # Persist ChromaDB data
       - uploads:/uploads  # Optional: store uploaded files
     environment:

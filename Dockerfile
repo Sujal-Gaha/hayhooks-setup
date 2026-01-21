@@ -6,10 +6,14 @@ RUN pip install --no-cache-dir \
     haystack-ai \
     ollama-haystack \
     python-dotenv \
+    trafilatura \
     chromadb \
     chroma-haystack \
     sentence-transformers \
-    trafilatura
+    pypdf \
+    pypdf2 \
+    nltk \
+    torch
 
 # Create directories for ChromaDB persistence
 RUN mkdir -p /data/chroma_db

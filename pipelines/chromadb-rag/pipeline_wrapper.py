@@ -30,7 +30,7 @@ from haystack_integrations.components.embedders.ollama import (
     OllamaTextEmbedder,
 )
 
-from config import get_config, EmbeddingProvider
+from .config import get_config, EmbeddingProvider
 
 
 class PipelineWrapper(BasePipelineWrapper):
