@@ -20,7 +20,6 @@ from fastapi import UploadFile
 
 from dotenv import load_dotenv
 
-
 load_dotenv()
 
 OLLAMA_SERVER_URL = os.getenv("OLLAMA_SERVER_URL") or ""
@@ -46,8 +45,8 @@ class PipelineWrapper(BasePipelineWrapper):
         start_time = time.time()
         log.info("Pipeline setup started")
 
-        log.info("Loading HotpotQA dataset (train[:5000])")
-        dataset = load_dataset("hotpotqa/hotpot_qa", "distractor", split="train[:5000]")
+        log.info("Loading HotpotQA dataset (train[:100])")
+        dataset = load_dataset("hotpotqa/hotpot_qa", "distractor", split="train[:100]")
         log.info(f"Dataset loaded with {len(dataset)} samples")
 
         docs = []
