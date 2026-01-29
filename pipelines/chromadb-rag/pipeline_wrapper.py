@@ -10,10 +10,6 @@ from fastapi import UploadFile
 
 from haystack import Document, Pipeline
 from haystack.components.builders import PromptBuilder
-from haystack.components.embedders import (
-    SentenceTransformersDocumentEmbedder,
-    SentenceTransformersTextEmbedder,
-)
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.writers import DocumentWriter
@@ -30,7 +26,7 @@ from haystack_integrations.components.embedders.ollama import (
     OllamaTextEmbedder,
 )
 
-from .config import get_config, EmbeddingProvider
+from .config import get_config
 
 
 class PipelineWrapper(BasePipelineWrapper):
@@ -67,40 +63,23 @@ class PipelineWrapper(BasePipelineWrapper):
             raise
 
     def _initialize_embedders(self):
-        if self.config.embedding_provider == EmbeddingProvider.OLLAMA:
-            log.info("Initializing Ollama embedders")
-            log.info(f"  Model: {self.config.ollama.embedding_model}")
-            log.info(f"  Server: {self.config.ollama.server_url}")
+        log.info("Initializing Ollama embedders")
+        log.info(f"  Model: {self.config.ollama.embedding_model}")
+        log.info(f"  Server: {self.config.ollama.server_url}")
 
-            self.doc_embedder = OllamaDocumentEmbedder(
-                model=self.config.ollama.embedding_model,
-                url=self.config.ollama.server_url,
-                timeout=self.config.ollama.timeout,
-            )
+        self.doc_embedder = OllamaDocumentEmbedder(
+            model=self.config.ollama.embedding_model,
+            url=self.config.ollama.server_url,
+            timeout=self.config.ollama.timeout,
+        )
 
-            self.text_embedder = OllamaTextEmbedder(
-                model=self.config.ollama.embedding_model,
-                url=self.config.ollama.server_url,
-                timeout=self.config.ollama.timeout,
-            )
+        self.text_embedder = OllamaTextEmbedder(
+            model=self.config.ollama.embedding_model,
+            url=self.config.ollama.server_url,
+            timeout=self.config.ollama.timeout,
+        )
 
-            log.info("Ollama embedders initialized")
-
-        else:
-            log.info("Initializing Sentence Transformers")
-            log.info(f"  Model: {self.config.sentence_transformers.model}")
-
-            self.doc_embedder = SentenceTransformersDocumentEmbedder(
-                model=self.config.sentence_transformers.model
-            )
-            self.doc_embedder.warm_up()
-
-            self.text_embedder = SentenceTransformersTextEmbedder(
-                model=self.config.sentence_transformers.model
-            )
-            self.text_embedder.warm_up()
-
-            log.info("Sentence Transformers embedders loaded and warmed up")
+        log.info("Ollama embedders initialized")
 
     def _setup_indexing_pipeline(self):
         self.indexing_pipeline = Pipeline()
@@ -258,9 +237,7 @@ class PipelineWrapper(BasePipelineWrapper):
                 split_docs = split_result["splitter"]["documents"]
                 log.info(f"Created {len(split_docs)} chunks")
 
-                log.info(
-                    f"Generating embeddings using {self.config.embedding_provider.value}..."
-                )
+                log.info("Generating embeddings using Ollama...")
                 embed_result = self.indexing_pipeline.run(
                     {"embedder": {"documents": split_docs}}
                 )
@@ -285,20 +262,14 @@ class PipelineWrapper(BasePipelineWrapper):
         log.info(f"Errors: {len(errors)}")
         log.info("=" * 70)
 
-        embedding_model = (
-            self.config.ollama.embedding_model
-            if self.config.embedding_provider == EmbeddingProvider.OLLAMA
-            else self.config.sentence_transformers.model
-        )
-
         return {
             "status": "success" if processed_files else "failed",
             "files_processed": len(processed_files),
             "total_files": len(files),
             "filenames": processed_files,
             "chunks_created": chunks_created,
-            "embedding_provider": self.config.embedding_provider.value,
-            "embedding_model": embedding_model,
+            "embedding_provider": "ollama",
+            "embedding_model": self.config.ollama.embedding_model,
             "errors": errors,
             "elapsed_time": f"{elapsed:.2f}s",
         }
@@ -308,7 +279,7 @@ class PipelineWrapper(BasePipelineWrapper):
     ) -> dict[str, Any]:
         log.info("=" * 70)
 
-        response = {}
+        response: dict[str, Any] = {}
 
         if files and len(files) > 0:
             try:
@@ -346,7 +317,7 @@ class PipelineWrapper(BasePipelineWrapper):
                         "reply": reply,
                         "elapsed_time": f"{elapsed:.2f}s",
                         "retrieved_documents": len(retrieved_docs),
-                        "embedding_provider": self.config.embedding_provider.value,
+                        "embedding_provider": "ollama",
                         "sources": [
                             {
                                 "filename": doc.meta.get("filename", "unknown"),

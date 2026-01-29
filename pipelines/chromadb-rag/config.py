@@ -1,17 +1,11 @@
 import os
 import sys
 
-from enum import Enum
 from dataclasses import dataclass
 from typing import Any, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
-
-
-class EmbeddingProvider(Enum):
-    OLLAMA = "ollama"
-    SENTENCE_TRANSFORMERS = "sentence-transformers"
 
 
 @dataclass
@@ -39,19 +33,6 @@ class OllamaConfig:
 
         if self.timeout <= 0:
             errors.append(f"Ollama timeout must be positive, got: {self.timeout}")
-
-        return errors
-
-
-@dataclass
-class SentenceTransformersConfig:
-    model: str
-
-    def validate(self) -> list[str]:
-        errors = []
-
-        if not self.model:
-            errors.append("SENTENCE_TRANSFORMERS_MODEL is not set")
 
         return errors
 
@@ -141,19 +122,11 @@ class LLMConfig:
 
 class Config:
     def __init__(self):
-        self.embedding_provider = self._get_embedding_provider()
-
         self.ollama = OllamaConfig(
             server_url=os.getenv("OLLAMA_SERVER_URL", "http://ollama:11434"),
             model=os.getenv("OLLAMA_MODEL", "llama3.2"),
             embedding_model=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text"),
             timeout=self._get_int_env("OLLAMA_TIMEOUT", 120),
-        )
-
-        self.sentence_transformers = SentenceTransformersConfig(
-            model=os.getenv(
-                "SENTENCE_TRANSFORMERS_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
-            )
         )
 
         self.chromadb = ChromaDBConfig(
@@ -173,18 +146,6 @@ class Config:
             num_ctx=self._get_int_env("LLM_NUM_CTX", 2048),
             top_p=self._get_float_env("LLM_TOP_P", 0.9),
         )
-
-    def _get_embedding_provider(self) -> EmbeddingProvider:
-        provider = os.getenv("EMBEDDING_PROVIDER", "ollama").lower()
-
-        try:
-            return EmbeddingProvider(provider)
-        except ValueError:
-            valid_providers = [p.value for p in EmbeddingProvider]
-            raise ValueError(
-                f"Invalid EMBEDDING_PROVIDER: '{provider}'. "
-                f"Must be one of: {valid_providers}"
-            )
 
     def _get_int_env(self, key: str, default: int) -> int:
         value = os.getenv(key)
@@ -217,11 +178,6 @@ class Config:
 
         all_errors.extend(self.ollama.validate())
 
-        if self.embedding_provider == EmbeddingProvider.OLLAMA:
-            pass
-        else:
-            all_errors.extend(self.sentence_transformers.validate())
-
         all_errors.extend(self.chromadb.validate())
 
         all_errors.extend(self.pipeline.validate())
@@ -232,20 +188,12 @@ class Config:
 
     def get_summary(self) -> dict[str, Any]:
         return {
-            "embedding_provider": self.embedding_provider.value,
             "ollama": {
                 "server_url": self.ollama.server_url,
                 "model": self.ollama.model,
                 "embedding_model": self.ollama.embedding_model,
                 "timeout": self.ollama.timeout,
             },
-            "sentence_transformers": (
-                {
-                    "model": self.sentence_transformers.model,
-                }
-                if self.embedding_provider == EmbeddingProvider.SENTENCE_TRANSFORMERS
-                else None
-            ),
             "chromadb": {
                 "persist_path": self.chromadb.persist_path,
                 "collection_name": self.chromadb.collection_name,
@@ -268,20 +216,12 @@ class Config:
         logger.info("Configuration Summary")
         logger.info("=" * 70)
 
-        logger.info(f"Embedding Provider: {self.embedding_provider.value}")
-        logger.info("")
-
         logger.info("Ollama Configuration:")
         logger.info(f"  Server URL: {self.ollama.server_url}")
         logger.info(f"  LLM Model: {self.ollama.model}")
         logger.info(f"  Embedding Model: {self.ollama.embedding_model}")
         logger.info(f"  Timeout: {self.ollama.timeout}s")
         logger.info("")
-
-        if self.embedding_provider == EmbeddingProvider.SENTENCE_TRANSFORMERS:
-            logger.info("Sentence Transformers Configuration: ")
-            logger.info(f"  Model: {self.sentence_transformers.model}")
-            logger.info("")
 
         logger.info("ChromaDB Configuration:")
         logger.info(f"  Persist Path: {self.chromadb.persist_path}")
